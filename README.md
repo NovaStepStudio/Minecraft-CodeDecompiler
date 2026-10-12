@@ -69,6 +69,8 @@ minecraftdecompiler build --version 26.3
 ```bash
 minecraftdecompiler fetch --version 1.8.9 --side both
 minecraftdecompiler remap --version 1.20.1
+minecraftdecompiler remap --version 1.8.9 --mcp-channel snapshot   # último snapshot MCP
+minecraftdecompiler remap --version 1.8.9 --refresh                # índice MCP al día
 minecraftdecompiler map --version 1.8.9
 minecraftdecompiler assets build --version 1.20.1
 minecraftdecompiler decompile --version 1.12.2 --engine cfr --obfuscated
@@ -93,7 +95,7 @@ piston-meta ──► client.jar (+ mappings si hay, + asset_index.json)
 
 | Versiones | Mappings | Resultado |
 |---|---|---|
-| 1.0 – 1.13 (ej. 1.8.9, 1.12.2) | MCP si hay canal estable | Nombres MCP (`getMinecraft`, `theWorld`); si no, ofuscado |
+| 1.0 – 1.13 (ej. 1.8.9, 1.12.2) | MCP si hay canal (estable o snapshot) | Nombres MCP (`getMinecraft`, `theWorld`); 1.12.2 vía tsrg MCPConfig + `stable_39`; si no, ofuscado |
 | 1.14.4 / 19w36a – 1.21.11 | Oficiales Mojang | Nombres oficiales (`getInstance`, ...) |
 | 26.1+ | No hay ni hacen falta | Detección por contenido → directo a CFR |
 

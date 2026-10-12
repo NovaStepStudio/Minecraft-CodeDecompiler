@@ -3,6 +3,26 @@
 Todos los cambios notables de este proyecto se documentan aquí.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.0.1] - 2026-10-12
+
+### Añadido
+
+- Canales MCP snapshot además de estables: `--mcp-channel stable|snapshot`
+  o canal exacto (`22`, `stable_22`, `20160301`, `snapshot_20160301`).
+  Caché separada por canal en `tools/mcp/<mc>/<kind>-<num>/`.
+- Índice MCP siempre actualizado: se re-descarga si tiene +24h o con
+  `--refresh` (con tolerancia a fallos: sigue con la caché si no hay red).
+- Probe de aplicabilidad: antes de remapear se verifica que el srg
+  corresponde al jar (muestreo de miembros); si deriva, aborta sin tocar nada.
+
+### Corregido
+
+- 1.12.2 daba salida corrupta en silencio: el srg donante 1.12 tiene los
+  notch globales derivados. Ahora usa el `joined.tsrg` exacto de MCPConfig
+  (+ CSVs `stable_39` de 1.12, como hacía Forge) y el probe lo valida.
+- Verificado: 1.8.9 snapshot (83% nombres, probe 98%), 1.12.2 (probe 100%,
+  `getMinecraft`/`displayGuiScreen` reales), 1.13.2 (probe 100%).
+
 ## [1.0.0] - 2026-10-12
 
 Primera versión pública.

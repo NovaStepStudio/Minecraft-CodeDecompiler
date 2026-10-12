@@ -27,13 +27,15 @@ func remapPaths(root, side string) (inJar, mappings, outJar string) {
 }
 
 type remapConfig struct {
-	mcVersion string
-	outBase   string
-	side      string
-	toolsDir  string
-	javaBin   string
-	threads   int
-	autoTools bool
+	mcVersion  string
+	outBase    string
+	side       string
+	toolsDir   string
+	javaBin    string
+	threads    int
+	autoTools  bool
+	mcpChannel string
+	refresh    bool
 }
 
 func cmdRemap(args []string) int {
@@ -46,6 +48,8 @@ func cmdRemap(args []string) int {
 	javaBin := fs.String("java", "java", "binario de Java")
 	threads := fs.Int("threads", 4, "hilos de tiny-remapper")
 	autoTools := fs.Bool("auto-tools", true, "descargar tiny-remapper si falta")
+	mcpChannel := fs.String("mcp-channel", "stable", "canal MCP legacy: stable|snapshot|exacto (22, stable_22, 20160301...)")
+	refresh := fs.Bool("refresh", false, "forzar actualización del índice MCP")
 	showHelp := fs.Bool("help", false, "muestra la ayuda")
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -60,8 +64,9 @@ func cmdRemap(args []string) int {
 DESCRIPCIÓN:
   Remapea el jar OFUSCADO a nombres legibles y guarda client-remapped.jar.
   Orden: 1) mappings oficiales Mojang (tiny-remapper, 1.14.4-1.21.11),
-  2) MCP ModCoderPack (SpecialSource, legacy con canal estable),
+  2) MCP ModCoderPack (SpecialSource: estables, snapshots o canal exacto),
   3) si el jar ya viene limpio (26.1+) lo deja listo sin remapear.
+  El índice MCP se actualiza solo si tiene +24h (o con --refresh).
   No borra nada: client.jar y mappings se conservan.
 
 FLAGS:
@@ -71,10 +76,13 @@ FLAGS:
   --tools-dir <d>   herramientas (defecto: ./tools)
   --java <bin>      java (defecto: java)
   --threads <n>     hilos (defecto: 4)
+  --mcp-channel <c> stable|snapshot|exacto: 22, stable_22, 20160301... (defecto: stable)
+  --refresh         forzar actualización del índice MCP
 
 EJEMPLOS:
   minecraft-codedecompiler remap --version 1.20.1
-  minecraft-codedecompiler remap --version 1.20.1 --side both
+  minecraft-codedecompiler remap --version 1.8.9 --mcp-channel snapshot
+  minecraft-codedecompiler remap --version 1.12.2 --side both
 `)
 		return 0
 	}
@@ -92,6 +100,7 @@ EJEMPLOS:
 		mcVersion: *mcVersion, outBase: *outBase, side: *side,
 		toolsDir: *toolsDir, javaBin: *javaBin,
 		threads: *threads, autoTools: *autoTools,
+		mcpChannel: *mcpChannel, refresh: *refresh,
 	}) {
 		fmt.Fprintf(os.Stdout, "siguiente: decompile --version %s --engine both  (usará el jar remapeado)\n", *mcVersion)
 		return 0
@@ -115,7 +124,7 @@ func runRemap(ctx context.Context, cfg remapConfig) bool {
 	root := filepath.Join(cfg.outBase, cfg.mcVersion)
 	ok := true
 	for _, s := range sides {
-		if !runRemapSide(ctx, tdir, root, cfg.mcVersion, s, cfg.javaBin, cfg.threads) {
+		if !runRemapSide(ctx, cfg, tdir, root, s) {
 			ok = false
 		}
 	}
@@ -124,12 +133,13 @@ func runRemap(ctx context.Context, cfg remapConfig) bool {
 
 // runRemapSide remapea un lado. Casos:
 //   - jar ofuscado + mappings oficiales -> tiny-remapper -> outJar (LIMPIO)
-//   - jar ofuscado + MCP (legacy con canal estable) -> SpecialSource (LIMPIO)
+//   - jar ofuscado + MCP (estables, snapshots o canal exacto) -> SpecialSource
 //   - jar ya limpio (26.1+)    -> copia a outJar, sin remapear
-//   - sin nada (< 1.14.4 sin MCP) -> false (seguir con ofuscado)
+//   - sin nada -> false (seguir con ofuscado)
 //
 // Nunca borra el jar original ni los mappings.
-func runRemapSide(ctx context.Context, toolsDir, root, mcVersion, side, javaBin string, threads int) bool {
+func runRemapSide(ctx context.Context, cfg remapConfig, tdir, root, side string) bool {
+	mcVersion := cfg.mcVersion
 	inJar, mappings, outJar := remapPaths(root, side)
 	if _, err := os.Stat(inJar); err != nil {
 		fmt.Fprintf(os.Stderr, "error: falta %s (ejecuta fetch --version %s primero)\n", inJar, mcVersion)
@@ -152,13 +162,13 @@ func runRemapSide(ctx context.Context, toolsDir, root, mcVersion, side, javaBin 
 		return true
 	}
 	if _, err := os.Stat(mappings); err == nil {
-		if err := remap.Remap(ctx, toolsDir, inJar, mappings, outJar, javaBin, threads); err != nil {
+		if err := remap.Remap(ctx, tdir, inJar, mappings, outJar, cfg.javaBin, cfg.threads); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			return false
 		}
-	} else if merr := mcp.RemapMCP(ctx, toolsDir, mcVersion, inJar, outJar, javaBin); merr != nil {
+	} else if merr := mcp.RemapMCP(ctx, tdir, mcVersion, cfg.mcpChannel, cfg.refresh, inJar, outJar, cfg.javaBin); merr != nil {
 		fmt.Fprintf(os.Stderr, "[..] sin mappings para %s: ni oficiales (%s ausente) ni MCP (%v).\n", mcVersion, mappings, merr)
-		fmt.Fprint(os.Stderr, "  Oficiales: 1.14.4/19w36a hasta 1.21.11. MCP: versiones con canal estable.\n")
+		fmt.Fprint(os.Stderr, "  Oficiales: 1.14.4/19w36a hasta 1.21.11. MCP: estables, snapshots o canal exacto.\n")
 		fmt.Fprint(os.Stderr, "  Se sigue con el jar ofuscado tal cual (usa --engine cfr).\n")
 		return false
 	} else {

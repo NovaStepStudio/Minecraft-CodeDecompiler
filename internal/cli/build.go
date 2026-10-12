@@ -25,6 +25,8 @@ func cmdBuild(args []string) int {
 	materialize := fs.Bool("materialize", false, "assets UTILIZABLES con nombres reales")
 	jobs := fs.Int("jobs", 12, "descargas paralelas de objetos")
 	threads := fs.Int("threads", 4, "hilos de tiny-remapper/Vineflower")
+	mcpChannel := fs.String("mcp-channel", "stable", "canal MCP legacy: stable|snapshot|exacto")
+	refresh := fs.Bool("refresh", false, "forzar actualización del índice MCP")
 	toolsDir := fs.String("tools-dir", "", "directorio de herramientas (defecto: ./tools o $MCDECOMP_TOOLS)")
 	javaBin := fs.String("java", "java", "binario de Java")
 	showHelp := fs.Bool("help", false, "muestra la ayuda")
@@ -57,6 +59,8 @@ FLAGS:
   --materialize     assets utilizables con nombres reales
   --jobs <n>        descargas paralelas (defecto: 12)
   --threads <n>     hilos de tiny-remapper (defecto: 4; decompile usa NumCPU)
+  --mcp-channel <c> stable|snapshot|exacto (defecto: stable)
+  --refresh         forzar actualización del índice MCP
   --tools-dir <d>   herramientas (defecto: ./tools)
   --java <bin>      java (defecto: java)
 
@@ -112,6 +116,7 @@ EJEMPLOS:
 		mcVersion: *mcVersion, outBase: *outBase, side: *side,
 		toolsDir: *toolsDir, javaBin: *javaBin,
 		threads: *threads, autoTools: true,
+		mcpChannel: *mcpChannel, refresh: *refresh,
 	}) {
 		fmt.Fprintln(os.Stderr, "[..] remap parcial: se descompilará el jar ofuscado tal cual")
 	}
@@ -131,7 +136,7 @@ EJEMPLOS:
 	// Paso 2b: mapeo TXT para javaagent externo (best-effort, no bloquea).
 	fmt.Fprintln(os.Stderr, "--- [map] mappings/*.txt + AGENT.md ---")
 	for _, s := range sides {
-		if !runMap(ctx, *outBase, *mcVersion, s) {
+		if !runMap(ctx, *outBase, *mcVersion, s, *mcpChannel, *refresh) {
 			fmt.Fprintln(os.Stderr, "[..] map parcial: sin fuente de mapeo para ese lado")
 		}
 	}

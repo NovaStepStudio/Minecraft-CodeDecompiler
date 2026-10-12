@@ -20,6 +20,8 @@ func cmdMap(args []string) int {
 	mcVersion := fs.String("version", "", "versión con remap disponible (ej. 1.8.9) [requerido]")
 	outBase := fs.String("out", "versions", "directorio base")
 	side := fs.String("side", "client", "client|server|both")
+	mcpChannel := fs.String("mcp-channel", "stable", "canal MCP legacy: stable|snapshot|exacto")
+	refresh := fs.Bool("refresh", false, "forzar actualización del índice MCP")
 	showHelp := fs.Bool("help", false, "muestra la ayuda")
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -36,7 +38,13 @@ DESCRIPCIÓN:
   --javaagent externo: classes.txt, methods.txt, fields.txt (obf => legible),
   MANIFEST.txt (formato y cobertura) y AGENT.md (objetivos curados resueltos:
   menus, botones, jugador... listos para intervenir/inyectar).
-  Fuente: mappings oficiales si existen, si no MCP legacy (descarga mcp.srg).
+  Fuente: mappings oficiales si existen, si no MCP legacy (estables,
+  snapshots o canal exacto con --mcp-channel; el índice se actualiza solo).
+
+FLAGS:
+  --version <id>    versión [requerido]
+  --mcp-channel <c> stable|snapshot|exacto (defecto: stable)
+  --refresh         forzar actualización del índice MCP
 
 EJEMPLOS:
   minecraft-codedecompiler map --version 1.8.9
@@ -59,7 +67,7 @@ EJEMPLOS:
 	}
 	ok := true
 	for _, s := range sides {
-		if !runMap(ctx, *outBase, *mcVersion, s) {
+		if !runMap(ctx, *outBase, *mcVersion, s, *mcpChannel, *refresh) {
 			ok = false
 		}
 	}
@@ -70,8 +78,8 @@ EJEMPLOS:
 }
 
 // runMap genera el mapeo de un lado en <root>/mappings[-server]/. Devuelve false
-// si no hay fuente de mapeo (ni oficiales ni MCP).
-func runMap(ctx context.Context, outBase, mcVersion, side string) bool {
+// si no hay fuente de mapeo (ni oficiales ni MCP en el canal pedido).
+func runMap(ctx context.Context, outBase, mcVersion, side, mcpChannel string, refresh bool) bool {
 	root := filepath.Join(outBase, mcVersion)
 	var mapDir, jarName, mapFile string
 	if side == "server" {
@@ -93,7 +101,7 @@ func runMap(ctx context.Context, outBase, mcVersion, side string) bool {
 		}
 		m, source = mm, "oficial Mojang (ProGuard)"
 	} else {
-		srg, serr := mcp.Ensure(ctx, toolsDirForMap(), mcVersion)
+		srg, desc, serr := mcp.Ensure(ctx, toolsDirForMap(), mcVersion, mcpChannel, refresh)
 		if serr != nil {
 			fmt.Fprintf(os.Stderr, "[..] map: sin fuente para %s (ni oficiales ni MCP: %v)\n", mcVersion, serr)
 			return false
@@ -103,7 +111,7 @@ func runMap(ctx context.Context, outBase, mcVersion, side string) bool {
 			fmt.Fprintf(os.Stderr, "error: parseando %s: %v\n", srg, perr)
 			return false
 		}
-		m, source = mm, "MCP ModCoderPack (SRG)"
+		m, source = mm, "MCP ModCoderPack ["+desc+"]"
 	}
 	header := fmt.Sprintf("mapeo %s %s (%s)", mcVersion, side, source)
 	if err := m.WriteTXT(mapDir, header); err != nil {
