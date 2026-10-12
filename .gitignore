@@ -1,0 +1,28 @@
+# Binarios y build
+/minecraft-codedecompiler
+/minecraft-codedecompiler.exe
+/minecraftdecompiler
+/minecraftdecompiler.exe
+/bin/
+/dist/
+
+# Go
+*.exe
+*.test
+*.out
+
+# Logs y restos de pruebas
+*.log
+*.part
+
+# Artefactos descargados (jars de MC, mappings, motores, salidas)
+# Se regeneran con: fetch + tools install + decompile
+/versions/
+/tools/
+/out/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,26 @@
+name: Feature request
+description: Propón una mejora
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: ¿Qué problema resuelve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta (comando, flags, comportamiento)
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Alcance
+      options:
+        - Nuevo comando
+        - Comando existente
+        - Mapeos / motores
+        - Docs / CI / releases
+        - Otro
