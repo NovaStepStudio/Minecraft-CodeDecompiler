@@ -3,6 +3,15 @@
 Todos los cambios notables de este proyecto se documentan aquí.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.1.0] - 2026-10-12
+
+### Añadido
+
+- Comando `mcp sync`: descarga UNA vez todo lo mapeable (último estable +
+  último snapshot por versión legacy, srg legacy y tsrgs) al espejo local.
+  Después `remap`/`map` trabajan 100% en local sin tocar la red.
+  Las versiones con mappings oficiales se saltan (no necesitan MCP).
+
 ## [1.0.2] - 2026-10-12
 
 ### Añadido

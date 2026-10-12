@@ -9,7 +9,7 @@ import (
 
 const (
 	Name    = "minecraft-codedecompiler"
-	Version = "1.0.2"
+	Version = "1.1.0"
 )
 
 // Run ejecuta el CLI. Solo terminal (stdin/stdout/stderr).
@@ -59,6 +59,8 @@ func Run(args []string) int {
 		return cmdRemap(cmdArgs)
 	case "map":
 		return cmdMap(cmdArgs)
+	case "mcp":
+		return cmdMCP(cmdArgs)
 	case "assets":
 		return cmdAssets(cmdArgs)
 	case "decompile":
@@ -94,6 +96,8 @@ COMANDOS:
                      (tiny-remapper + client_mappings.txt) -> jar LIMPIO
   map                genera mappings/*.txt + AGENT.md para un --javaagent
                      externo (obf => legible, objetivos curados resueltos)
+  mcp                espejo local de mappings: sync descarga todo una vez
+                     y remap/map trabajan sin red
   assets             descarga objetos y construye assets UTILIZABLES
                      (nombres reales, no solo hashes)
   decompile          descompila un jar con CFR y/o Vineflower
@@ -111,6 +115,7 @@ FLUJO TÍPICO (sin librerías del juego):
 
   %s build --help
   %s map --help
+  %s mcp --help
   %s fetch --help
   %s remap --help
   %s assets --help
@@ -126,5 +131,5 @@ NOTAS:
     --with-objects o assets download (1.20.1 ~621MB).
   - Pipeline: fetch -> remap (tiny-remapper) -> decompile.
     decompile usa client-remapped.jar si existe (código LIMPIO).
-`, Name, Version, Name, Name, Name, Name, Name, Name, Name, Name, Name, Name, Name)
+`, Name, Version, Name, Name, Name, Name, Name, Name, Name, Name, Name, Name, Name, Name)
 }

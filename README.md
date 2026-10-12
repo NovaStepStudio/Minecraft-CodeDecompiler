@@ -64,6 +64,7 @@ minecraftdecompiler build --version 26.3
 | `assets download\|build` | Objetos de assets y árbol utilizable con nombres reales |
 | `decompile --version <id>` | CFR y/o Vineflower → `src-cfr/` y/o `src-vine/` |
 | `tools install\|check` | Instala y verifica los 4 motores + Java |
+| `mcp sync` | Espejo local: descarga todo lo mapeable una vez; luego cero red |
 | `versions` | Lista versiones del manifest de Mojang |
 
 ```bash

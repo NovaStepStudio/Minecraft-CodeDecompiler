@@ -336,6 +336,12 @@ func notchShared(ctx context.Context, sdir, mc string) (string, string, error) {
 	} else {
 		fmt.Fprintf(os.Stderr, "[..] sin srg legacy para %s; probando MCPConfig tsrg\n", mc)
 	}
+	if idx := cachedMCPConfigIndex(sdir); idx != nil {
+		if _, ok := idx[mc]; !ok {
+			fmt.Fprintf(os.Stderr, "[..] %s no está en el índice MCPConfig: salto directo\n", mc)
+			return "", "", fmt.Errorf("sin tsrg MCPConfig para %s (según índice local)", mc)
+		}
+	}
 	tsrgPath := filepath.Join(sdir, "joined.tsrg")
 	converted := filepath.Join(sdir, "joined-from-tsrg.srg")
 	if _, err := os.Stat(converted); err == nil {
@@ -363,6 +369,26 @@ func notchShared(ctx context.Context, sdir, mc string) (string, string, error) {
 		}
 	}
 	return "", "", fmt.Errorf("sin notch para %s: ni srg legacy, ni MCPConfig tsrg, ni donante", mc)
+}
+
+// cachedMCPConfigIndex lee el índice guardado por SyncAll (nil si no existe).
+// Sirve para NO probar URLs tsrg que no existen (cero peticiones inútiles).
+func cachedMCPConfigIndex(sdir string) map[string]bool {
+	// sdir = tools/mcp/<mc>/shared -> el índice vive en tools/mcp/.
+	idxPath := filepath.Join(filepath.Dir(filepath.Dir(sdir)), "mcpconfig-index.json")
+	raw, err := os.ReadFile(idxPath)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	if err := json.Unmarshal(raw, &names); err != nil {
+		return nil
+	}
+	out := map[string]bool{}
+	for _, n := range names {
+		out[n] = true
+	}
+	return out
 }
 
 // legacySRG descarga el zip srg legacy de ver y extrae joined.srg.
