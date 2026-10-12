@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             goos: linux
             goarch: amd64
             ext: ""
@@ -26,11 +26,11 @@ jobs:
             ext: ""
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.27"
-          cache: true
+          cache: false
       - name: build
         env:
           GOOS: ${{ matrix.goos }}
@@ -38,21 +38,21 @@ jobs:
           CGO_ENABLED: "0"
         run: go build -trimpath -ldflags "-s -w" -o minecraftdecompiler-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} .
       - name: upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: minecraftdecompiler-${{ matrix.goos }}-${{ matrix.goarch }}
           path: minecraftdecompiler-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
 
   release:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
         with:
           path: dist
           merge-multiple: true
       - name: publish
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          generate_release_notes: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "${{ github.ref_name }}" --generate-notes dist/*
