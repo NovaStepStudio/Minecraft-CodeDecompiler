@@ -26,6 +26,7 @@ Requisitos: **Java 17+** (Temurin u Oracle; CFR y remappers funcionan desde Java
 go install github.com/NovaStepStudio/Minecraft-CodeDecompiler@latest
 
 # Opción B: binario de la [página de releases](https://github.com/NovaStepStudio/Minecraft-CodeDecompiler/releases)
+#   (`latest` = compilación automática al día de main; `v*` = estables)
 #   Windows: minecraftdecompiler-windows-amd64.exe
 #   Linux:   minecraftdecompiler-linux-amd64   (chmod +x)
 #   macOS:   minecraftdecompiler-darwin-arm64  (chmod +x)
