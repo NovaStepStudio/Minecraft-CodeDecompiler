@@ -101,7 +101,8 @@ piston-meta ──► client.jar (+ mappings si hay, + asset_index.json)
 
 La detección es por contenido del jar (500+ clases `net/minecraft/` = limpio),
 no por número de versión. Re-ejecutar es seguro: todo se omite si ya existe
-y coincide (sha1/tamaño).
+y coincide (sha1/tamaño). La caché (`tools/`, `versions/`) + ETag evita
+re-descargar de GitHub (sin rate-limit); el índice MCP se actualiza solo.
 
 ## Layout de `versions/<id>/`
 

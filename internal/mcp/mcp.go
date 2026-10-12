@@ -53,21 +53,16 @@ func loadVersions(ctx context.Context, toolsDir string, force bool) (map[string]
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, err
 		}
-		tmp := idxPath + ".tmp"
-		if derr := downloadText(ctx, ArchiveBase+"/"+VersionsJSONPath, tmp); derr != nil {
-			os.Remove(tmp)
+		changed, ferr := fetchVersionsJSON(ctx, ArchiveBase+"/"+VersionsJSONPath, idxPath)
+		if ferr != nil {
 			if statErr != nil {
-				return nil, fmt.Errorf("índice MCP: %w", derr)
+				return nil, fmt.Errorf("índice MCP: %w", ferr)
 			}
-			fmt.Fprintf(os.Stderr, "[!!] no se pudo actualizar el índice MCP (%v); usando caché\n", derr)
-		} else if rerr := os.Rename(tmp, idxPath); rerr != nil {
-			os.Remove(tmp)
-			if statErr != nil {
-				return nil, fmt.Errorf("índice MCP: %w", rerr)
-			}
-			fmt.Fprintf(os.Stderr, "[!!] no se pudo guardar el índice MCP (%v); usando caché\n", rerr)
-		} else {
+			fmt.Fprintf(os.Stderr, "[!!] no se pudo actualizar el índice MCP (%v); usando caché\n", ferr)
+		} else if changed {
 			fmt.Fprintf(os.Stderr, "[ok] índice MCP actualizado (%s)\n", reason)
+		} else {
+			fmt.Fprintf(os.Stderr, "[ok] índice MCP sin cambios aguas arriba (304, sin gastar cuota)\n")
 		}
 	}
 	raw, err := os.ReadFile(idxPath)
@@ -210,6 +205,59 @@ func downloadText(ctx context.Context, url, dest string) error {
 	return err
 }
 
+// fetchVersionsJSON descarga versions.json con ETag condicional para no
+// gastar cuota de GitHub. Devuelve changed=false si aguas arriba no cambió
+// (304: toca el fichero para reiniciar la ventana de 24h).
+func fetchVersionsJSON(ctx context.Context, url, dest string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	etagPath := dest + ".etag"
+	var etag string
+	if raw, err := os.ReadFile(etagPath); err == nil {
+		etag = strings.TrimSpace(string(raw))
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("User-Agent", "minecraft-codedecompiler/1.0.0")
+	if etag != "" {
+		req.Header.Set("If-None-Match", etag)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotModified {
+		now := time.Now()
+		_ = os.Chtimes(dest, now, now)
+		return false, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("GET %s: %s", url, resp.Status)
+	}
+	tmp := dest + ".tmp"
+	f, err := os.Create(tmp)
+	if err != nil {
+		return false, err
+	}
+	_, err = io.Copy(f, resp.Body)
+	f.Close()
+	if err != nil {
+		os.Remove(tmp)
+		return false, err
+	}
+	if err := os.Rename(tmp, dest); err != nil {
+		os.Remove(tmp)
+		return false, err
+	}
+	if tag := strings.TrimSpace(resp.Header.Get("ETag")); tag != "" {
+		_ = os.WriteFile(etagPath, []byte(tag), 0o644)
+	}
+	return true, nil
+}
+
 // Ensure descarga y fusiona el mapeo MCP para mc según el canal pedido
 // (stable|snapshot|exacto). Estrategias notch: srg legacy exacto ->
 // MCPConfig tsrg exacto -> srg legacy donante. Caché por canal en
@@ -289,16 +337,25 @@ func notchShared(ctx context.Context, sdir, mc string) (string, string, error) {
 		fmt.Fprintf(os.Stderr, "[..] sin srg legacy para %s; probando MCPConfig tsrg\n", mc)
 	}
 	tsrgPath := filepath.Join(sdir, "joined.tsrg")
+	converted := filepath.Join(sdir, "joined-from-tsrg.srg")
+	if _, err := os.Stat(converted); err == nil {
+		fmt.Fprintf(os.Stderr, "[ok] tsrg MCPConfig en caché (%s, sin descargar)\n", mc)
+		return converted, " +tsrg MCPConfig", nil
+	}
 	tsrgURL := fmt.Sprintf("%s/versions/release/%s/joined.tsrg", MCPConfigBase, mc)
-	if derr := downloadText(ctx, tsrgURL, tsrgPath); derr == nil {
-		if fi, serr := os.Stat(tsrgPath); serr == nil && fi.Size() >= 100*1024 {
-			joined := filepath.Join(sdir, "joined-from-tsrg.srg")
-			if terr := tsrgToLegacy(tsrgPath, joined); terr == nil {
-				return joined, " +tsrg MCPConfig", nil
-			} else {
-				fmt.Fprintf(os.Stderr, "[!!] tsrg inválido: %v\n", terr)
+	tmp := tsrgPath + ".tmp"
+	if derr := downloadText(ctx, tsrgURL, tmp); derr == nil {
+		if fi, serr := os.Stat(tmp); serr == nil && fi.Size() >= 100*1024 {
+			os.Remove(tsrgPath)
+			if rerr := os.Rename(tmp, tsrgPath); rerr == nil {
+				if terr := tsrgToLegacy(tsrgPath, converted); terr == nil {
+					return converted, " +tsrg MCPConfig", nil
+				} else {
+					fmt.Fprintf(os.Stderr, "[!!] tsrg inválido: %v\n", terr)
+				}
 			}
 		}
+		os.Remove(tmp)
 	}
 	if donor := stripPatch(mc); donor != mc {
 		if joined, err := legacySRG(ctx, sdir, donor); err == nil {

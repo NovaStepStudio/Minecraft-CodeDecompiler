@@ -3,6 +3,14 @@
 Todos los cambios notables de este proyecto se documentan aquí.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.0.2] - 2026-10-12
+
+### Añadido
+
+- Anti rate-limit GitHub: nada se re-descarga si ya está en caché.
+  El `joined.tsrg` se cachea (antes bajaba en cada run) y el índice MCP usa
+  ETag condicional (304 sin gastar cuota si no cambió aguas arriba).
+
 ## [1.0.1] - 2026-10-12
 
 ### Añadido

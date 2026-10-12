@@ -9,7 +9,7 @@ import (
 
 const (
 	Name    = "minecraft-codedecompiler"
-	Version = "1.0.1"
+	Version = "1.0.2"
 )
 
 // Run ejecuta el CLI. Solo terminal (stdin/stdout/stderr).
