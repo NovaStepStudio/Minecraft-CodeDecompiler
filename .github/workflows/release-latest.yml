@@ -2,6 +2,7 @@ name: Release Latest
 
 # Mantiene actualizado un release rodante `latest` (prerelease) con cada
 # cambio en main. Los tags v* siguen generando releases estables.
+# Un solo job con cross-compilación: sin actions de artefactos.
 on:
   push:
     branches: [main]
@@ -15,54 +16,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            goos: linux
-            goarch: amd64
-            ext: ""
-          - os: windows-latest
-            goos: windows
-            goarch: amd64
-            ext: ".exe"
-          - os: macos-latest
-            goos: darwin
-            goarch: arm64
-            ext: ""
-    runs-on: ${{ matrix.os }}
+  release:
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version: "1.27"
           cache: false
-      - name: build
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: "0"
-        run: go build -trimpath -ldflags "-s -w" -o minecraftdecompiler-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} .
-      - name: upload
-        uses: actions/upload-artifact@v5
-        with:
-          name: minecraftdecompiler-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: minecraftdecompiler-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
-
-  release:
-    needs: build
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/download-artifact@v5
-        with:
-          path: dist
-          merge-multiple: true
+      - name: build (linux, windows, macos)
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o minecraftdecompiler-linux-amd64 .
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o minecraftdecompiler-windows-amd64.exe .
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o minecraftdecompiler-darwin-arm64 .
       - name: refresh latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete latest --yes --cleanup-tag || true
+          gh release delete latest --yes || true
+          gh api --method DELETE /repos/${{ github.repository }}/git/refs/tags/latest || true
           gh release create latest --prerelease --title "Latest (main)" \
             --notes "Compilación automática de la rama main. Para versiones estables usa los tags v*." \
-            dist/*
+            minecraftdecompiler-linux-amd64 minecraftdecompiler-windows-amd64.exe minecraftdecompiler-darwin-arm64
