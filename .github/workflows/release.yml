@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Tag a publicar (ej. v1.1.0). Debe coincidir con Version del CLI."
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -21,9 +27,21 @@ jobs:
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o minecraftdecompiler-linux-amd64 .
           CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o minecraftdecompiler-windows-amd64.exe .
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o minecraftdecompiler-darwin-arm64 .
+      - name: tag name
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            case "${{ inputs.version }}" in v*) ;; *) echo "el tag debe empezar con v (ej. v1.1.0)"; exit 1;; esac
+            git tag "${{ inputs.version }}"
+            git push origin "${{ inputs.version }}"
+            echo "name=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
       - name: publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ github.ref_name }}" --generate-notes \
+          gh release create "${{ steps.tag.outputs.name }}" --generate-notes \
             minecraftdecompiler-linux-amd64 minecraftdecompiler-windows-amd64.exe minecraftdecompiler-darwin-arm64

@@ -30,6 +30,9 @@ go install github.com/NovaStepStudio/Minecraft-CodeDecompiler@latest
 #   Windows: minecraftdecompiler-windows-amd64.exe
 #   Linux:   minecraftdecompiler-linux-amd64   (chmod +x)
 #   macOS:   minecraftdecompiler-darwin-arm64  (chmod +x)
+#
+# Publicar una release estable: Actions → Release → Run workflow → tag vX.Y.Z
+# (o `git tag vX.Y.Z && git push origin vX.Y.Z`). `latest` se actualiza solo.
 
 # Opción C: compilar
 git clone https://github.com/NovaStepStudio/Minecraft-CodeDecompiler.git
