@@ -37,7 +37,8 @@ jobs:
             echo "tag recibido: '$TAG'"
             case "$TAG" in
               v*) ;;
-              *) echo "ERROR: el campo version llegó vacío o sin 'v'. Escribe ej. v1.1.0 en el formulario y reintenta."; exit 1;;
+              [0-9]*) TAG="v$TAG"; echo "usando tag: '$TAG'";;
+              *) echo "ERROR: escribe una versión como 1.1.0 o v1.1.0 (recibido: '$TAG')"; exit 1;;
             esac
             git tag "$TAG"
             git push origin "$TAG"
