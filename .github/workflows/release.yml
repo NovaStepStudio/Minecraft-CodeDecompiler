@@ -32,10 +32,16 @@ jobs:
         shell: bash
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            case "${{ inputs.version }}" in v*) ;; *) echo "el tag debe empezar con v (ej. v1.1.0)"; exit 1;; esac
-            git tag "${{ inputs.version }}"
-            git push origin "${{ inputs.version }}"
-            echo "name=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            TAG="${{ inputs.version }}"
+            TAG="$(echo "$TAG" | tr -d '[:space:]')"
+            echo "tag recibido: '$TAG'"
+            case "$TAG" in
+              v*) ;;
+              *) echo "ERROR: el campo version llegó vacío o sin 'v'. Escribe ej. v1.1.0 en el formulario y reintenta."; exit 1;;
+            esac
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "name=$TAG" >> "$GITHUB_OUTPUT"
           else
             echo "name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
           fi
